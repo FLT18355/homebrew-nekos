@@ -21,7 +21,6 @@ jobs:
           LATEST_VERSION=$(curl -s https://api.github.com/repos/FLT18355/gitx-tui/releases/latest | jq -r '.tag_name | sub("^v"; "")')
           echo "Latest version: ${LATEST_VERSION}"
 
-          # 从顶层url提取当前版本
           CURRENT=$(grep -E 'url.*releases/download/v' Formula/gtx.rb | head -n1 | sed -E 's/.*download\/v([^\/]+)\/.*/\1/')
           if [[ "${CURRENT}" == "${LATEST_VERSION}" ]]; then
             echo "✅ 已经是版本 ${LATEST_VERSION}，无需更新。"
@@ -29,7 +28,7 @@ jobs:
           fi
 
           echo "🚀 发现 gitx-tui 新版本: ${LATEST_VERSION}"
-          PROXY="https://v4.gh-proxy.org/"
+          PROXY="shturl.cc/lf8dw9Dvj1Rb5P"
           BASE="https://github.com/FLT18355/gitx-tui/releases/download/v${LATEST_VERSION}"
 
           SHA_ARM=$(curl -fSL --retry 5 --retry-delay 2 "${PROXY}${BASE}/gxt-${LATEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz" | sha256sum | awk '{print $1}')
@@ -38,10 +37,8 @@ jobs:
           echo "SHA_ARM=${SHA_ARM}"
           echo "SHA_X64=${SHA_X64}"
 
-          # 替换顶层 x86_64 url + sha
           sed -i.bak -E "s@(url \".*/download/)v[^/]+(@\1v${LATEST_VERSION}\2@g" Formula/gtx.rb
           sed -i.bak "0,/sha256/s/sha256 \".*\"/sha256 \"${SHA_X64}\"/" Formula/gtx.rb
-          # 替换 linux arm64 url + sha
           sed -i.bak -E "/gxt-[0-9].*-aarch64-unknown-linux-gnu.tar.gz/,+1 s@(url \".*/download/)v[^/]+(@\1v${LATEST_VERSION}\2@g" Formula/gtx.rb
           sed -i.bak "/aarch64-unknown-linux-gnu.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/gtx.rb
           rm -f Formula/gtx.rb.bak
