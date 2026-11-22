@@ -1,41 +1,67 @@
-# brew tap-new uses this file to generate an autobump workflow for the new tap
-name: brew bump
+name: Auto Update Neko Formula
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/autobump.yml
   schedule:
-    # Every day at 12:55 UTC
-    - cron: 55 12 * * *
+    # 每天 12:55 UTC 自动检查
+    - cron: '55 12 * * *'
+  workflow_dispatch: # 允许你在 Actions 页面手动点击运行测试
 
-permissions: {}
-
-defaults:
-  run:
-    shell: bash -xeuo pipefail {0}
+permissions:
+  contents: write # 允许 Action 提交代码
 
 jobs:
   autobump:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
-      - name: Set up Homebrew
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@63a2d4d8d4193eab3e62b1b782ff3ab8408f5b29 # 2026.11.09.1
+      - name: Checkout Tap Repo
+        uses: actions/checkout@v4
 
-      - name: Set up git
-        id: git_setup
-        uses: Homebrew/actions/git-user-config@63a2d4d8d4193eab3e62b1b782ff3ab8408f5b29 # 2026.11.09.1
+      - name: Get latest release from neko repo
+        id: get_version
+        run: |
+          # 获取你 neko 仓库的最新 Release Tag，并去掉前面的 v
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/FLT18355/neko/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
+          echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
 
-      - name: Bump formulae and casks
-        env:
-          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_GIT_COMMITTER_NAME: ${{ steps.git_setup.outputs.name }}
-          HOMEBREW_GIT_COMMITTER_EMAIL: ${{ steps.git_setup.outputs.email }}
-          TAP_NAME: ${{ steps.set-up-homebrew.outputs.tap-name }}
-        run: brew bump --no-fork --open-pr --bump-synced --tap="$TAP_NAME"
+      - name: Check if update is needed
+        id: check
+        run: |
+          CURRENT_VERSION=$(grep 'version "' Formula/neko.rb | head -n 1 | awk -F'"' '{print $2}')
+          if [ "$CURRENT_VERSION" == "${{ env.VERSION }}" ]; then
+            echo "已经是版本 ${{ env.VERSION }}，无需更新。"
+            echo "NEED_UPDATE=false" >> $GITHUB_ENV
+          else
+            echo "发现新版本: ${{ env.VERSION }} (当前: $CURRENT_VERSION)"
+            echo "NEED_UPDATE=true" >> $GITHUB_ENV
+          fi
+
+      - name: Update Formula and calculate SHA256
+        if: env.NEED_UPDATE == 'true'
+        run: |
+          VERSION=${{ env.VERSION }}
+          PROXY="https://v4.gh-proxy.org/"
+          BASE="https://github.com/FLT18355/neko/releases/download/v${VERSION}"
+
+          echo "⬇️ 正在下载并计算哈希..."
+          SHA_MAC=$(curl -sL "${PROXY}${BASE}/neko-v${VERSION}-macos-aarch64.tar.gz" | sha256sum | awk '{print $1}')
+          SHA_ARM=$(curl -sL "${PROXY}${BASE}/neko-v${VERSION}-linux-aarch64.tar.gz" | sha256sum | awk '{print $1}')
+          SHA_X86=$(curl -sL "${PROXY}${BASE}/neko-v${VERSION}-linux-x86_64.tar.gz" | sha256sum | awk '{print $1}')
+
+          echo "✅ 哈希计算完成，正在更新 Formula..."
+          # 替换版本号
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/neko.rb
+          sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${VERSION}/g" Formula/neko.rb
+
+          # 替换对应的 SHA256
+          sed -i "/macos-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_MAC}\"/" Formula/neko.rb
+          sed -i "/linux-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/neko.rb
+          sed -i "/linux-x86_64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_X86}\"/" Formula/neko.rb
+
+      - name: Commit and Push changes
+        if: env.NEED_UPDATE == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/neko.rb
+          git commit -m "chore: bump neko to v${{ env.VERSION }}"
+          git push origin main
