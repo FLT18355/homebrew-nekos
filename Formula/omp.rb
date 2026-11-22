@@ -17,7 +17,7 @@ class Omp < Formula
   on_linux do
     if Hardware::CPU.arm?
       url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/v19.1.0/omp-linux-arm64"
-      sha256 "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
+      sha256 "785e8e519acb55852a85e5495271d768a221ca92c095c043cd3eb0d7f8d3eafc"
     end
   end
 
