@@ -16,7 +16,7 @@ jobs:
         run: |
           LATEST_VERSION=$(curl -s https://api.github.com/repos/FLT18355/neko/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
           
-          if grep -q "v${LATEST_VERSION}/" Formula/neko.rb; then
+          if grep -q "version \"${LATEST_VERSION}\"" Formula/neko.rb; then
             echo "已经是版本 ${LATEST_VERSION}，无需更新。"
             exit 0
           fi
@@ -29,8 +29,11 @@ jobs:
           SHA_ARM=$(curl -sL "${PROXY}${BASE}/neko-v${LATEST_VERSION}-linux-aarch64.tar.gz" | sha256sum | awk '{print $1}')
           SHA_X86=$(curl -sL "${PROXY}${BASE}/neko-v${LATEST_VERSION}-linux-x86_64.tar.gz" | sha256sum | awk '{print $1}')
           
-          # 因为不再有 version 字段，只需替换 URL 里的版本号和 SHA
+          # 替换 version 行和 URL 里的版本号
+          sed -i "s/version \".*\"/version \"${LATEST_VERSION}\"/" Formula/neko.rb
           sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${LATEST_VERSION}/g" Formula/neko.rb
+          
+          # 替换 SHA
           sed -i "0,/sha256/s/sha256 \".*\"/sha256 \"${SHA_X86}\"/" Formula/neko.rb
           sed -i "/macos-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_MAC}\"/" Formula/neko.rb
           sed -i "/linux-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/neko.rb
