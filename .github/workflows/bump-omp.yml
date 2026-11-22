@@ -13,29 +13,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Update omp
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+
           LATEST_VERSION=$(gh release view --repo can1357/oh-my-pi --json tagName --jq '.tagName' | sed 's/^v//')
-          
-          if grep -q "version \"${LATEST_VERSION}\"" Formula/omp.rb; then
+          CURRENT_VERSION=$(grep -m1 -E '^[[:space:]]*url "' Formula/omp.rb | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's/^v//')
+
+          if [[ "${CURRENT_VERSION}" == "${LATEST_VERSION}" ]]; then
             echo "已经是版本 ${LATEST_VERSION}，无需更新。"
             exit 0
           fi
-          
+
           echo "🚀 发现 omp 新版本: ${LATEST_VERSION}"
           PROXY="https://v4.gh-proxy.org/"
           BASE="https://github.com/can1357/oh-my-pi/releases/download/v${LATEST_VERSION}"
-          
-          SHA_ARM=$(curl -sL -f --retry 5 --retry-delay 2 "${PROXY}${BASE}/omp-linux-arm64" | sha256sum | awk '{print $1}')
-          SHA_X64=$(curl -sL -f --retry 5 --retry-delay 2 "${PROXY}${BASE}/omp-linux-x64" | sha256sum | awk '{print $1}')
-          
-          # 替换 version 行和 URL 里的版本号
-          sed -i "s/version \".*\"/version \"${LATEST_VERSION}\"/" Formula/omp.rb
-          sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${LATEST_VERSION}/g" Formula/omp.rb
-          
-          # 替换 SHA
+
+          SHA_ARM=$(curl -sfL --retry 5 --retry-delay 2 "${PROXY}${BASE}/omp-linux-arm64" | sha256sum | awk '{print $1}')
+          SHA_X64=$(curl -sfL --retry 5 --retry-delay 2 "${PROXY}${BASE}/omp-linux-x64" | sha256sum | awk '{print $1}')
+
+          # 只替换 URL 中的版本号；不要写 version 行（Homebrew 会从 URL 推断，显式 version 属于冗余）
+          sed -i -E "s/v[0-9]+\.[0-9]+\.[0-9]+/v${LATEST_VERSION}/g" Formula/omp.rb
+
           sed -i "0,/sha256/s/sha256 \".*\"/sha256 \"${SHA_X64}\"/" Formula/omp.rb
           sed -i "/omp-linux-arm64/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/omp.rb
-          
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/omp.rb
