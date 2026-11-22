@@ -1,13 +1,13 @@
-name: Auto Update Neko Formula
+name: Auto Update Formulas
 
 on:
   schedule:
     # 每天 12:55 UTC 自动检查
     - cron: '55 12 * * *'
-  workflow_dispatch: # 允许你在 Actions 页面手动点击运行测试
+  workflow_dispatch: # 允许手动点击触发
 
 permissions:
-  contents: write # 允许 Action 提交代码
+  contents: write
 
 jobs:
   autobump:
@@ -16,52 +16,68 @@ jobs:
       - name: Checkout Tap Repo
         uses: actions/checkout@v4
 
-      - name: Get latest release from neko repo
-        id: get_version
+      # ================= 更新 neko =================
+      - name: Update neko
         run: |
-          # 获取你 neko 仓库的最新 Release Tag，并去掉前面的 v
+          echo "🔍 检查 neko 版本..."
           LATEST_VERSION=$(curl -s https://api.github.com/repos/FLT18355/neko/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
-          echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
-
-      - name: Check if update is needed
-        id: check
-        run: |
           CURRENT_VERSION=$(grep 'version "' Formula/neko.rb | head -n 1 | awk -F'"' '{print $2}')
-          if [ "$CURRENT_VERSION" == "${{ env.VERSION }}" ]; then
-            echo "已经是版本 ${{ env.VERSION }}，无需更新。"
-            echo "NEED_UPDATE=false" >> $GITHUB_ENV
+          
+          if [ "$LATEST_VERSION" == "$CURRENT_VERSION" ]; then
+            echo "✅ neko 已经是版本 $LATEST_VERSION，无需更新。"
           else
-            echo "发现新版本: ${{ env.VERSION }} (当前: $CURRENT_VERSION)"
-            echo "NEED_UPDATE=true" >> $GITHUB_ENV
+            echo "🚀 发现 neko 新版本: $LATEST_VERSION (当前: $CURRENT_VERSION)"
+            PROXY="https://v4.gh-proxy.org/"
+            BASE="https://github.com/FLT18355/neko/releases/download/v${LATEST_VERSION}"
+            
+            SHA_MAC=$(curl -sL "${PROXY}${BASE}/neko-v${LATEST_VERSION}-macos-aarch64.tar.gz" | sha256sum | awk '{print $1}')
+            SHA_ARM=$(curl -sL "${PROXY}${BASE}/neko-v${LATEST_VERSION}-linux-aarch64.tar.gz" | sha256sum | awk '{print $1}')
+            SHA_X86=$(curl -sL "${PROXY}${BASE}/neko-v${LATEST_VERSION}-linux-x86_64.tar.gz" | sha256sum | awk '{print $1}')
+            
+            sed -i "s/version \".*\"/version \"${LATEST_VERSION}\"/" Formula/neko.rb
+            sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${LATEST_VERSION}/g" Formula/neko.rb
+            sed -i "/macos-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_MAC}\"/" Formula/neko.rb
+            sed -i "/linux-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/neko.rb
+            sed -i "/linux-x86_64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_X86}\"/" Formula/neko.rb
+            echo "✅ neko 更新完毕"
           fi
 
-      - name: Update Formula and calculate SHA256
-        if: env.NEED_UPDATE == 'true'
+      # ================= 更新 omp =================
+      - name: Update omp
         run: |
-          VERSION=${{ env.VERSION }}
-          PROXY="https://v4.gh-proxy.org/"
-          BASE="https://github.com/FLT18355/neko/releases/download/v${VERSION}"
+          echo "🔍 检查 omp 版本..."
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/can1357/oh-my-pi/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
+          CURRENT_VERSION=$(grep 'version "' Formula/omp.rb | head -n 1 | awk -F'"' '{print $2}')
+          
+          if [ "$LATEST_VERSION" == "$CURRENT_VERSION" ]; then
+            echo "✅ omp 已经是版本 $LATEST_VERSION，无需更新。"
+          else
+            echo "🚀 发现 omp 新版本: $LATEST_VERSION (当前: $CURRENT_VERSION)"
+            PROXY="https://v4.gh-proxy.org/"
+            BASE="https://github.com/can1357/oh-my-pi/releases/download/v${LATEST_VERSION}"
+            
+            # omp 没有后缀，直接下载计算
+            SHA_ARM=$(curl -sL "${PROXY}${BASE}/omp-linux-arm64" | sha256sum | awk '{print $1}')
+            SHA_X64=$(curl -sL "${PROXY}${BASE}/omp-linux-x64" | sha256sum | awk '{print $1}')
+            
+            sed -i "s/version \".*\"/version \"${LATEST_VERSION}\"/" Formula/omp.rb
+            # 替换 URL 中的版本号
+            sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${LATEST_VERSION}/g" Formula/omp.rb
+            # 替换哈希值
+            sed -i "/omp-linux-arm64/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/omp.rb
+            sed -i "/omp-linux-x64/,+1 s/sha256 \".*\"/sha256 \"${SHA_X64}\"/" Formula/omp.rb
+            echo "✅ omp 更新完毕"
+          fi
 
-          echo "⬇️ 正在下载并计算哈希..."
-          SHA_MAC=$(curl -sL "${PROXY}${BASE}/neko-v${VERSION}-macos-aarch64.tar.gz" | sha256sum | awk '{print $1}')
-          SHA_ARM=$(curl -sL "${PROXY}${BASE}/neko-v${VERSION}-linux-aarch64.tar.gz" | sha256sum | awk '{print $1}')
-          SHA_X86=$(curl -sL "${PROXY}${BASE}/neko-v${VERSION}-linux-x86_64.tar.gz" | sha256sum | awk '{print $1}')
-
-          echo "✅ 哈希计算完成，正在更新 Formula..."
-          # 替换版本号
-          sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/neko.rb
-          sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${VERSION}/g" Formula/neko.rb
-
-          # 替换对应的 SHA256
-          sed -i "/macos-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_MAC}\"/" Formula/neko.rb
-          sed -i "/linux-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/neko.rb
-          sed -i "/linux-x86_64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_X86}\"/" Formula/neko.rb
-
+      # ================= 提交更改 =================
       - name: Commit and Push changes
-        if: env.NEED_UPDATE == 'true'
         run: |
+          if git diff --quiet; then
+            echo "没有文件发生改变，跳过提交。"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/neko.rb
-          git commit -m "chore: bump neko to v${{ env.VERSION }}"
+          git add Formula/
+          git commit -m "chore: auto-bump formulas"
           git push origin main
