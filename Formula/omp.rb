@@ -4,19 +4,19 @@ class Omp < Formula
   license "MIT"
 
   # 顶层默认提供 Linux x86_64 的包
-  url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/v19.1.0/omp-linux-x64"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/vmentions_count/omp-linux-x64"
+  sha256 "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
 
   on_macos do
     # 占位符，骗过语法检查
-    url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/v19.1.0/omp-darwin-arm64"
+    url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/vmentions_count/omp-darwin-arm64"
     sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/v19.1.0/omp-linux-arm64"
-      sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+      url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/vmentions_count/omp-linux-arm64"
+      sha256 "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
     end
   end
 
