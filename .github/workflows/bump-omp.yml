@@ -1,0 +1,40 @@
+name: Bump OMP
+on:
+  schedule:
+    - cron: '55 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  autobump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update omp
+        run: |
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/can1357/oh-my-pi/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
+          
+          if grep -q "v${LATEST_VERSION}/" Formula/omp.rb; then
+            echo "已经是版本 ${LATEST_VERSION}，无需更新。"
+            exit 0
+          fi
+          
+          echo "🚀 发现 omp 新版本: ${LATEST_VERSION}"
+          PROXY="https://v4.gh-proxy.org/"
+          BASE="https://github.com/can1357/oh-my-pi/releases/download/v${LATEST_VERSION}"
+          
+          SHA_ARM=$(curl -sL "${PROXY}${BASE}/omp-linux-arm64" | sha256sum | awk '{print $1}')
+          SHA_X64=$(curl -sL "${PROXY}${BASE}/omp-linux-x64" | sha256sum | awk '{print $1}')
+          
+          # 替换 URL 版本号和 SHA
+          sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${LATEST_VERSION}/g" Formula/omp.rb
+          sed -i "0,/sha256/s/sha256 \".*\"/sha256 \"${SHA_X64}\"/" Formula/omp.rb
+          sed -i "/omp-linux-arm64/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/omp.rb
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/omp.rb
+          git commit -m "chore: bump omp to v${LATEST_VERSION}"
+          git push

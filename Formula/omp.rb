@@ -1,7 +1,6 @@
 class Omp < Formula
   desc "An AI coding agent CLI (oh-my-pi)"
   homepage "https://github.com/can1357/oh-my-pi"
-  version "19.1.0"
   license "MIT"
 
   # 顶层默认提供 Linux x86_64 的包

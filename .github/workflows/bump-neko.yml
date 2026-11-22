@@ -1,0 +1,42 @@
+name: Bump Neko
+on:
+  schedule:
+    - cron: '55 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  autobump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update neko
+        run: |
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/FLT18355/neko/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
+          
+          if grep -q "v${LATEST_VERSION}/" Formula/neko.rb; then
+            echo "已经是版本 ${LATEST_VERSION}，无需更新。"
+            exit 0
+          fi
+          
+          echo "🚀 发现 neko 新版本: ${LATEST_VERSION}"
+          PROXY="https://v4.gh-proxy.org/"
+          BASE="https://github.com/FLT18355/neko/releases/download/v${LATEST_VERSION}"
+          
+          SHA_MAC=$(curl -sL "${PROXY}${BASE}/neko-v${LATEST_VERSION}-macos-aarch64.tar.gz" | sha256sum | awk '{print $1}')
+          SHA_ARM=$(curl -sL "${PROXY}${BASE}/neko-v${LATEST_VERSION}-linux-aarch64.tar.gz" | sha256sum | awk '{print $1}')
+          SHA_X86=$(curl -sL "${PROXY}${BASE}/neko-v${LATEST_VERSION}-linux-x86_64.tar.gz" | sha256sum | awk '{print $1}')
+          
+          # 因为不再有 version 字段，只需替换 URL 里的版本号和 SHA
+          sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${LATEST_VERSION}/g" Formula/neko.rb
+          sed -i "0,/sha256/s/sha256 \".*\"/sha256 \"${SHA_X86}\"/" Formula/neko.rb
+          sed -i "/macos-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_MAC}\"/" Formula/neko.rb
+          sed -i "/linux-aarch64.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/neko.rb
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/neko.rb
+          git commit -m "chore: bump neko to v${LATEST_VERSION}"
+          git push
