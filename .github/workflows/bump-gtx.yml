@@ -1,4 +1,4 @@
-name: Bump gitx-tui
+name: Bump gtx
 on:
   schedule:
     - cron: '55 12 * * *'
@@ -14,32 +14,34 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Update gitx-tui
+      - name: Update gtx
         run: |
           set -euo pipefail
-          LATEST_VERSION=$(curl -s https://api.github.com/repos/FLT18355/gitx-tui/releases/latest | jq -r '.tag_name | sub("^v"; "")')
+
+          LATEST_VERSION=$(curl -sf https://api.github.com/repos/FLT18355/gitx-tui/releases/latest | jq -r '.tag_name | sub("^v"; "")')
           echo "Latest version: ${LATEST_VERSION}"
 
-          CURRENT=$(grep -E 'url.*releases/download/v' Formula/gtx.rb | head -n1 | sed -E 's/.*download\/v([^\/]+)\/.*/\1/')
+          # 从顶层 url 提取当前版本对比（版本号允许 1.0.1-2 这种带 - 的后缀）
+          CURRENT=$(grep -m1 -E 'url.*releases/download/v' Formula/gtx.rb | sed -E 's#.*/download/v([^/]+)/.*#\1#')
           if [[ "${CURRENT}" == "${LATEST_VERSION}" ]]; then
             echo "✅ 已经是版本 ${LATEST_VERSION}，无需更新。"
             exit 0
           fi
 
-          echo "🚀 发现 gitx-tui 新版本: ${LATEST_VERSION}"
-          PROXY="shturl.cc/lf8dw9Dvj1Rb5P"
+          echo "🚀 发现 gtx 新版本: ${LATEST_VERSION}"
+          PROXY="https://v4.gh-proxy.org/"
           BASE="https://github.com/FLT18355/gitx-tui/releases/download/v${LATEST_VERSION}"
 
-          SHA_ARM=$(curl -fSL --retry 5 --retry-delay 2 "${PROXY}${BASE}/gxt-${LATEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz" | sha256sum | awk '{print $1}')
-          SHA_X64=$(curl -fSL --retry 5 --retry-delay 2 "${PROXY}${BASE}/gxt-${LATEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" | sha256sum | awk '{print $1}')
+          SHA_ARM=$(curl -sfL --retry 5 --retry-delay 2 "${PROXY}${BASE}/gxt-${LATEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz" | sha256sum | awk '{print $1}')
+          SHA_X64=$(curl -sfL --retry 5 --retry-delay 2 "${PROXY}${BASE}/gxt-${LATEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" | sha256sum | awk '{print $1}')
 
           echo "SHA_ARM=${SHA_ARM}"
           echo "SHA_X64=${SHA_X64}"
 
-          sed -i.bak -E "s@(url \".*/download/)v[^/]+(@\1v${LATEST_VERSION}\2@g" Formula/gtx.rb
+          # 旧版本号在 URL 里出现两次：下载路径 tag 和资产文件名 gxt-<版本>-<triple>，整体替换；不要写 version 行
+          sed -i.bak "s/${CURRENT}/${LATEST_VERSION}/g" Formula/gtx.rb
+          # 替换 sha：顶层为 x86_64，arm64 在条件块内
           sed -i.bak "0,/sha256/s/sha256 \".*\"/sha256 \"${SHA_X64}\"/" Formula/gtx.rb
-          sed -i.bak -E "/gxt-[0-9].*-aarch64-unknown-linux-gnu.tar.gz/,+1 s@(url \".*/download/)v[^/]+(@\1v${LATEST_VERSION}\2@g" Formula/gtx.rb
           sed -i.bak "/aarch64-unknown-linux-gnu.tar.gz/,+1 s/sha256 \".*\"/sha256 \"${SHA_ARM}\"/" Formula/gtx.rb
           rm -f Formula/gtx.rb.bak
 
@@ -51,5 +53,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/gtx.rb
-          git commit -m "chore: bump gitx-tui to v${LATEST_VERSION}"
+          git commit -m "chore: bump gtx to v${LATEST_VERSION}"
           git push
