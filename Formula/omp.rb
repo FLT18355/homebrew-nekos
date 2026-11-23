@@ -1,13 +1,13 @@
 class Omp < Formula
   desc "AI coding agent CLI (oh-my-pi)"
   homepage "https://github.com/can1357/oh-my-pi"
-  url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/v19.1.0/omp-linux-x64"
-  sha256 "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
+  url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/v19.1.1/omp-linux-x64"
+  sha256 "04e9490f9394da6d6804474cc2e41eb3d18f8e26215df4b34bdd4ad4c0d8a401"
   license "MIT"
 
   if OS.linux? && Hardware::CPU.arm?
-    url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/v19.1.0/omp-linux-arm64"
-    sha256 "785e8e519acb55852a85e5495271d768a221ca92c095c043cd3eb0d7f8d3eafc"
+    url "https://v4.gh-proxy.org/https://github.com/can1357/oh-my-pi/releases/download/v19.1.1/omp-linux-arm64"
+    sha256 "f022f720c4899eb24c6e5e34dcbbae98ae05f5532bb03e97dffc02cfc8dd9a6f"
   end
 
   def install
