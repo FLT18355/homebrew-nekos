@@ -1,13 +1,13 @@
 class Gtx < Formula
   desc "Terminal GitHub workbench built on ratatui and crossterm"
   homepage "https://github.com/FLT18355/gitx-tui"
-  url "https://v4.gh-proxy.org/https://github.com/FLT18355/gitx-tui/releases/download/v1.0.3/gxt-1.0.3-x86_64-unknown-linux-gnu.tar.gz"
-  sha256 "eb82e73f1aad17fbb92fb07c5e15532ad05c9de3621e367e6fbc2e0507eec998"
+  url "https://v4.gh-proxy.org/https://github.com/FLT18355/gitx-tui/releases/download/v1.0.6/gxt-1.0.6-x86_64-unknown-linux-gnu.tar.gz"
+  sha256 "4ff301d5e559e040d8ccfe339af67b08fa26d54f5fdcab6b86023222cf6e29f2"
   license "MIT"
 
   if OS.linux? && Hardware::CPU.arm?
-    url "https://v4.gh-proxy.org/https://github.com/FLT18355/gitx-tui/releases/download/v1.0.3/gxt-1.0.3-aarch64-unknown-linux-gnu.tar.gz"
-    sha256 "fddfa1c7de5c6f46fe8b88945b3923a93d77882836d6f7943028f7ca35c399b0"
+    url "https://v4.gh-proxy.org/https://github.com/FLT18355/gitx-tui/releases/download/v1.0.6/gxt-1.0.6-aarch64-unknown-linux-gnu.tar.gz"
+    sha256 "f74e061f2530b4e587e800fcc48c60b01241d628190e00972d48df6211dd4a33"
   end
 
   def install
