@@ -1,0 +1,55 @@
+name: Bump Fresh
+on:
+  schedule:
+    - cron: '55 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  autobump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Update fresh
+        run: |
+          set -euo pipefail
+
+          LATEST_VERSION=$(curl -sf https://api.github.com/repos/sinelaw/fresh/releases/latest | jq -r '.tag_name | sub("^v"; "")')
+          CURRENT_VERSION=$(grep -m1 -E '^[[:space:]]*url "' Formula/fresh.rb | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's/^v//')
+
+          if [[ "${CURRENT_VERSION}" == "${LATEST_VERSION}" ]]; then
+            echo "已经是版本 ${LATEST_VERSION}，无需更新。"
+            exit 0
+          fi
+
+          echo "🚀 发现 fresh 新版本: ${LATEST_VERSION}"
+          PROXY="https://v4.gh-proxy.org/"
+          BASE="https://github.com/sinelaw/fresh/releases/download/v${LATEST_VERSION}"
+
+          # 4个资产
+          MAC_INTEL_URL="${PROXY}${BASE}/fresh-editor-x86_64-apple-darwin.tar.xz"
+          MAC_ARM_URL="${PROXY}${BASE}/fresh-editor-aarch64-apple-darwin.tar.xz"
+          LINUX_X86_URL="${PROXY}${BASE}/fresh-editor-x86_64-unknown-linux-gnu.tar.xz"
+          LINUX_ARM_URL="${PROXY}${BASE}/fresh-editor-aarch64-unknown-linux-gnu.tar.xz"
+
+          SHA_MAC_INTEL=$(curl -sfL --retry 5 --retry-delay 2 "${MAC_INTEL_URL}" | sha256sum | awk '{print $1}')
+          SHA_MAC_ARM=$(curl -sfL --retry 5 --retry-delay 2 "${MAC_ARM_URL}" | sha256sum | awk '{print $1}')
+          SHA_LINUX_X86=$(curl -sfL --retry 5 --retry-delay 2 "${LINUX_X86_URL}" | sha256sum | awk '{print $1}')
+          SHA_LINUX_ARM=$(curl -sfL --retry 5 --retry-delay 2 "${LINUX_ARM_URL}" | sha256sum | awk '{print $1}')
+
+          # 替换所有url里的版本 vx.y.z
+          sed -i -E "s/v[0-9]+\.[0-9]+\.[0-9]+/v${LATEST_VERSION}/g" Formula/fresh.rb
+
+          # 按文件名匹配，替换对应sha256
+          sed -i "/fresh-editor-x86_64-apple-darwin.tar.xz/,+1 s/sha256 \".*\"/sha256 \"${SHA_MAC_INTEL}\"/" Formula/fresh.rb
+          sed -i "/fresh-editor-aarch64-apple-darwin.tar.xz/,+1 s/sha256 \".*\"/sha256 \"${SHA_MAC_ARM}\"/" Formula/fresh.rb
+          sed -i "/fresh-editor-x86_64-unknown-linux-gnu.tar.xz/,+1 s/sha256 \".*\"/sha256 \"${SHA_LINUX_X86}\"/" Formula/fresh.rb
+          sed -i "/fresh-editor-aarch64-unknown-linux-gnu.tar.xz/,+1 s/sha256 \".*\"/sha256 \"${SHA_LINUX_ARM}\"/" Formula/fresh.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/fresh.rb
+          git commit -m "chore: bump fresh to v${LATEST_VERSION}"
+          git push
