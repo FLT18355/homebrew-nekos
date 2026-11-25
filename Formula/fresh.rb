@@ -1,5 +1,5 @@
 class Fresh < Formula
-  desc "A modern terminal-based text editor with plugin support"
+  desc "Modern terminal-based text editor with plugin support"
   homepage "https://github.com/sinelaw/fresh"
   license "GPL-3.0-or-later"
 
@@ -21,7 +21,7 @@ class Fresh < Formula
     end
     on_arm do
       url "https://v4.gh-proxy.org/https://github.com/sinelaw/fresh/releases/download/v0.5.9/fresh-editor-aarch64-unknown-linux-gnu.tar.xz"
-      sha256 "ae0c6d1f68578f75e1ba27394e159c7c551084a8bd5fe60774d864df96911747"
+      sha256 "ae0c6d1f68578f75e1ba27394e159c7c551084a8bd5fe60774d864df9611747"
     end
   end
 
@@ -46,3 +46,4 @@ class Fresh < Formula
     system "#{bin}/fresh", "--version"
   end
 end
+
