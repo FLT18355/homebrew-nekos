@@ -1,7 +1,6 @@
 class Fresh < Formula
   desc "A modern terminal-based text editor with plugin support"
   homepage "https://github.com/sinelaw/fresh"
-  version "0.5.9"
   license "GPL-3.0-or-later"
 
   on_macos do
@@ -27,12 +26,7 @@ class Fresh < Formula
   end
 
   def install
-    # Plugins and themes are compiled into the binary; the tarball
-    # ships only the binary + docs.
     bin.install "fresh"
-    # Provenance receipt so the editor knows Homebrew installed it and
-    # defers updates to `brew upgrade`. Overrides the generic tarball
-    # receipt that ships inside the archive.
     (prefix/"share/fresh").mkpath
     (prefix/"share/fresh/install-receipt.toml").write <<~RECEIPT
       schema = 1
